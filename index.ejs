@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>TLE Lab Reservation - Home</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <h1>TLE Laboratory Reservation</h1>
+  <form action="/reserve" method="post">
+    <label>Venue
+      <select name="venue">
+        <option>Home Economics Lab</option>
+        <option>Sewing Lab</option>
+        <option>Accounting Lab</option>
+        <option>BPFM Lab</option>
+        <option>Housekeeping Lab</option>
+        <option>Comp Lab 1</option>
+        <option>Comp Lab 2</option>
+        <option>Drafting Lab</option>
+        <option>EMS/Caregiving</option>
+      </select>
+    </label>
+    <label>Date <input type="date" name="date" required></label>
+    <label>Time From <input type="time" name="time_from" required></label>
+    <label>Time To <input type="time" name="time_to" required></label>
+    <label>Purpose of Activity <input type="text" name="purpose"></label>
+    <label>Tools, Equipment / Facilities to be used <input type="text" name="equipment"></label>
+    <label>Person making the reservation <input type="text" name="person_name" required></label>
+    <div>
+      <button type="submit">Submit Reservation</button>
+    </div>
+  </form>
+
+  <p>
+    <a href="/calendar">View Calendar</a>
+  </p>
+</body>
+</html>

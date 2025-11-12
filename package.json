@@ -1,0 +1,21 @@
+{
+  "name": "tle-lab-reservation",
+  "version": "1.0.0",
+  "description": "TLE Laboratory Reservation app - simple Express + SQLite implementation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "lowdb": "^1.0.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

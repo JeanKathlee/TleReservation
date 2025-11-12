@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Admin - Reservations</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-light bg-white border-bottom">
+      <div class="container">
+        <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+        <div>
+          <a class="btn btn-outline-secondary btn-sm" href="/calendar">Calendar</a>
+          <a class="btn btn-outline-secondary btn-sm ms-2" href="/admin/users">Users</a>
+          <a class="btn btn-secondary btn-sm ms-2" href="/admin/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Reservations</h2>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped mb-0">
+              <thead class="table-light">
+                <tr><th>ID</th><th>Venue</th><th>Date</th><th>Time</th><th>Person</th><th>Purpose</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                <% reservations.forEach(r => { %>
+                  <tr>
+                    <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
+                    <td><%= r.venue %></td>
+                    <td><%= r.date %></td>
+                    <td><%= r.time_from %> - <%= r.time_to %></td>
+                    <td><%= r.person_name %></td>
+                    <td><%= r.purpose %></td>
+                    <td><span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : 'secondary' %>"><%= r.status %></span></td>
+                    <td>
+                      <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline">
+                        <button name="decision" value="approved" class="btn btn-sm btn-success">Approve</button>
+                      </form>
+                      <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline ms-1">
+                        <button name="decision" value="declined" class="btn btn-sm btn-danger">Decline</button>
+                      </form>
+                      <form method="post" action="/admin/delete/<%= r.id %>" class="d-inline ms-1" onsubmit="return confirm('Delete reservation <%= r.id %>?');">
+                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

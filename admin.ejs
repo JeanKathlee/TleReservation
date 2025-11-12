@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Reservations</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <h1>Admin - Reservations</h1>
+  <p><a href="/admin/logout">Logout</a> | <a href="/admin/users">Users</a> | <a href="/calendar">Calendar</a></p>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr><th>ID</th><th>Venue</th><th>Date</th><th>Time</th><th>Person</th><th>Purpose</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      <% reservations.forEach(r => { %>
+        <tr>
+          <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
+          <td><%= r.venue %></td>
+          <td><%= r.date %></td>
+          <td><%= r.time_from %> - <%= r.time_to %></td>
+          <td><%= r.person_name %></td>
+          <td><%= r.purpose %></td>
+          <td><%= r.status %></td>
+          <td>
+            <form method="post" action="/admin/decision/<%= r.id %>">
+              <button name="decision" value="approved">Approve</button>
+              <button name="decision" value="declined">Decline</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</body>
+</html>

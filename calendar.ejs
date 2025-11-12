@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Calendar</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .event { border:1px solid #ccc; padding:8px; margin:6px 0 }
+  </style>
+</head>
+<body>
+  <h1>Reservations Calendar (List)</h1>
+  <p><a href="/">Home</a></p>
+  <% if (events.length===0) { %>
+    <p>No reservations yet.</p>
+  <% } %>
+  <% events.forEach(ev => { %>
+    <div class="event">
+      <strong><%= ev.date %></strong> — <%= ev.time_from %> to <%= ev.time_to %>
+      <div><em><%= ev.venue %></em> — <%= ev.status %></div>
+      <div><a href="/reservation/<%= ev.id %>">View</a></div>
+    </div>
+  <% }) %>
+</body>
+</html>

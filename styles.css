@@ -1,0 +1,10 @@
+body { font-family: Arial, Helvetica, sans-serif; margin:20px }
+form label { display:block; margin:8px 0 }
+input, select { padding:6px; }
+button { padding:8px 12px }
+.bondpage { background: white }
+
+@media print {
+  body { margin: 0 }
+  .bondpage { width: 100%; }
+}

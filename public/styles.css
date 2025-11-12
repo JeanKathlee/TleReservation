@@ -1,0 +1,16 @@
+/* Custom overrides alongside Bootstrap */
+body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f8fa; }
+.container { max-width: 1000px; }
+.bondpage { background: white }
+
+/* Form spacing when not using Bootstrap form classes */
+label { display:block; margin:8px 0 }
+input, select { padding:6px; }
+
+@media print {
+  body { margin: 0 }
+  .bondpage { width: 100%; }
+}
+
+.print-top { margin-bottom: 12px }
+

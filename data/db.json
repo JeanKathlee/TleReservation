@@ -1,0 +1,147 @@
+{
+  "reservations": [
+    {
+      "id": 2,
+      "venue": "Accounting Lab",
+      "date": "2025-11-03",
+      "time_from": "02:32",
+      "time_to": "02:33",
+      "purpose": "gdfg",
+      "equipment": "dfgd",
+      "person_name": "gdfg",
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T10:30:41.340Z"
+    },
+    {
+      "id": 3,
+      "venue": "BPFM Lab",
+      "date": "2025-11-05",
+      "time_from": "14:31",
+      "time_to": "02:35",
+      "purpose": "gdfgdfg",
+      "equipment": "dfgdfg",
+      "person_name": "dfgdf",
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T10:31:25.360Z"
+    },
+    {
+      "id": 4,
+      "venue": "Sewing Lab",
+      "date": "2025-11-03",
+      "time_from": "02:48",
+      "time_to": "02:48",
+      "purpose": "dgfdg",
+      "equipment": "dfgd",
+      "person_name": "dfgd",
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T10:45:31.822Z"
+    },
+    {
+      "id": 5,
+      "venue": "Accounting Lab",
+      "date": "2025-11-02",
+      "time_from": "02:50",
+      "time_to": "05:49",
+      "purpose": "jghjgjg",
+      "equipment": "ghjgj",
+      "person_name": "ghjg",
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T10:47:27.895Z"
+    },
+    {
+      "id": 6,
+      "venue": "Accounting Lab",
+      "date": "2025-11-03",
+      "time_from": "03:17",
+      "time_to": "06:15",
+      "purpose": "asdas",
+      "equipment": "dasdasdasdasd",
+      "person_name": "asdasdad",
+      "created_by": 3,
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T11:15:11.231Z"
+    },
+    {
+      "id": 7,
+      "venue": "Sewing Lab",
+      "date": "2025-10-29",
+      "time_from": "03:26",
+      "time_to": "03:25",
+      "purpose": "asdas",
+      "equipment": "asdasd",
+      "person_name": "asdasd",
+      "created_by": 3,
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T11:23:44.527Z"
+    },
+    {
+      "id": 8,
+      "venue": "BPFM Lab",
+      "date": "2025-11-04",
+      "time_from": "03:33",
+      "time_to": "03:33",
+      "purpose": "asdasda",
+      "equipment": "sdadasd",
+      "person_name": "asdas",
+      "created_by": 3,
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T11:30:10.520Z"
+    },
+    {
+      "id": 9,
+      "venue": "BPFM Lab",
+      "date": "2025-10-29",
+      "time_from": "03:34",
+      "time_to": "03:34",
+      "purpose": "adsasd",
+      "equipment": "asdad",
+      "person_name": "dasda",
+      "created_by": 3,
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T11:31:51.504Z"
+    },
+    {
+      "id": 10,
+      "venue": "Accounting Lab",
+      "date": "2025-11-10",
+      "time_from": "05:44",
+      "time_to": "07:47",
+      "purpose": "dasda",
+      "equipment": "asdasd",
+      "person_name": "asdas",
+      "created_by": 3,
+      "person_signature": "",
+      "status": "pending",
+      "created_at": "2025-11-12T11:44:36.861Z"
+    }
+  ],
+  "lastId": 10,
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2a$08$XRZP/4zLWBywoN/f.nBFFu2pdp2jl4wuMmpHd0.jTHlcGFFMaa5Ki",
+      "role": "admin"
+    },
+    {
+      "id": 2,
+      "username": "fghf",
+      "password": "$2a$08$kxeDf.2t5H1TrcJiQFKo.O5ypCFTnQLsRsyiIhCtQ0vwBo5nu6UHO",
+      "role": "user"
+    },
+    {
+      "id": 3,
+      "username": "jean",
+      "password": "$2a$08$ddz1AN1bnqgG8NKRtIGOz.quS71Kgr2eRjZjEGiMVF6gURc.hNdx.",
+      "role": "user"
+    }
+  ]
+}
