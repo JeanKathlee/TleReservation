@@ -5,17 +5,17 @@ const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
 
 const app = express();
-// Ensure data directory exists and initialize JSON DB (lowdb)
-const fs = require('fs');
+
+// Ensure data directory exists and initialize JSON DB
 if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'));
 const adapter = new FileSync(path.join(__dirname, 'data', 'db.json'));
 const db = low(adapter);
-// initialize DB defaults (users + reservations)
 db.defaults({ users: [], reservations: [], lastId: 0 }).write();
 
-// helper: create admin if not exists
+// Create admin user if not exists
 const ensureAdmin = () => {
   const admin = db.get('users').find({ username: 'admin' }).value();
   if (!admin) {
@@ -25,59 +25,107 @@ const ensureAdmin = () => {
 };
 ensureAdmin();
 
+// Express setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({ secret: 'tle-secret', resave: false, saveUninitialized: true }));
 
-// expose current session user to views
+// Make current session user available to all templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
 
-// expose events to views so templates can always access calendar data
+// Make reservations available to all templates
 app.use((req, res, next) => {
   try {
-    // include all reservations (approved/pending/declined/cancelled) so users see their full history
-    const events = db.get('reservations')
-      .map(r => ({ id: r.id, venue: r.venue, date: r.date, time_from: r.time_from, time_to: r.time_to, purpose: r.purpose, equipment: r.equipment, person_name: r.person_name, status: r.status, created_by: r.created_by, created_at: r.created_at }))
-      .value();
+    const events = db.get('reservations').value();
     res.locals.events = events;
-  } catch (err) {
+  } catch (e) {
     res.locals.events = [];
   }
   next();
 });
 
+// Helper: require login
+function requireLogin(req, res, next) {
+  if (req.session.user) return next();
+  req.session.redirectTo = req.originalUrl;
+  res.redirect('/login');
+}
+
+// Helper: require admin
+function requireAdmin(req, res, next) {
+  if (req.session.user && req.session.user.role === 'admin') return next();
+  res.redirect('/login');
+}
+
+// Home page - dashboard
 app.get('/', (req, res) => {
-  // Always render the homepage; show login or reservation form based on session.
-  // Also pass calendar events so the homepage can show the calendar to all visitors.
-  // Use the enriched events set by middleware (res.locals.events) so templates have person_name and created_by
-  const allEvents = (res.locals && res.locals.events) ? res.locals.events : db.get('reservations').value();
-  const events = (allEvents || []).filter(r => r.status !== 'declined');
-  // compute "mine" for logged-in user so template is simpler
+  const allEvents = res.locals.events || [];
   let mine = [];
-  if (req.session && req.session.user) {
-    const uname = (req.session.user.username || '').toString().trim().toLowerCase();
-    mine = events.filter(e => {
-      if (typeof e.created_by !== 'undefined' && e.created_by !== null) return e.created_by == req.session.user.id;
-      const pname = (e.person_name || '').toString().trim().toLowerCase();
-      if (!pname) return false;
-      return pname === uname;
+  if (req.session.user) {
+    const uname = req.session.user.username.toLowerCase().trim();
+    mine = allEvents.filter(e => {
+      if (e.created_by) return e.created_by === req.session.user.id;
+      return (e.person_name || '').toLowerCase().trim() === uname;
     });
   }
-  // expose optional active tab from query (e.g. ?tab=myres)
-  res.locals.activeTab = req.query.tab || null;
-  res.render('index', { events, mine });
+  res.render('index', { mine, currentPage: 'home' });
 });
 
+// Lab reservations page
+app.get('/lab-reservations', requireLogin, (req, res) => {
+  const allEvents = res.locals.events || [];
+  let mine = [];
+  if (req.session.user) {
+    const uname = req.session.user.username.toLowerCase().trim();
+    mine = allEvents.filter(e => {
+      if (e.created_by) return e.created_by === req.session.user.id;
+      return (e.person_name || '').toLowerCase().trim() === uname;
+    });
+  }
+  const labReservations = mine.filter(r => r.venue !== 'Equipment Reservation');
+  res.render('lab_reservations', { reservations: labReservations, currentPage: 'lab-reservations' });
+});
+
+// Equipment reservations page
+app.get('/equipment-reservations', requireLogin, (req, res) => {
+  const allEvents = res.locals.events || [];
+  let mine = [];
+  if (req.session.user) {
+    const uname = req.session.user.username.toLowerCase().trim();
+    mine = allEvents.filter(e => {
+      if (e.created_by) return e.created_by === req.session.user.id;
+      return (e.person_name || '').toLowerCase().trim() === uname;
+    });
+  }
+  const equipmentReservations = mine.filter(r => r.venue === 'Equipment Reservation');
+  res.render('equipment_reservations', { reservations: equipmentReservations, currentPage: 'equipment-reservations' });
+});
+
+// Statistics page
+app.get('/statistics', requireLogin, (req, res) => {
+  const allEvents = res.locals.events || [];
+  let mine = [];
+  if (req.session.user) {
+    const uname = req.session.user.username.toLowerCase().trim();
+    mine = allEvents.filter(e => {
+      if (e.created_by) return e.created_by === req.session.user.id;
+      return (e.person_name || '').toLowerCase().trim() === uname;
+    });
+  }
+  res.render('statistics', { mine, currentPage: 'statistics' });
+});
+
+// Lab reservation
 app.post('/reserve', requireLogin, (req, res) => {
   const { venue, date, time_from, time_to, purpose, equipment, person_name } = req.body;
   const nextId = db.get('lastId').value() + 1;
   db.set('lastId', nextId).write();
-  const record = {
+  db.get('reservations').push({
     id: nextId,
     venue,
     date,
@@ -86,49 +134,64 @@ app.post('/reserve', requireLogin, (req, res) => {
     purpose,
     equipment,
     person_name,
-    created_by: req.session && req.session.user ? req.session.user.id : null,
-    person_signature: '',
+    created_by: req.session.user.id,
     status: 'pending',
     created_at: new Date().toISOString()
-  };
-  // debug: log who is creating the reservation and the record
-  try {
-    console.log('POST /reserve by session.user =', req.session && req.session.user);
-    console.log('New reservation record =', record);
-  } catch (e) {
-    // no-op
-  }
-  db.get('reservations').push(record).write();
-  // after creating a reservation, redirect back to home with My Reservations tab active
-  res.redirect('/?tab=myres');
+  }).write();
+  res.redirect('/?tab=reservations');
 });
 
-// require login helper
-function requireLogin(req, res, next) {
-  if (req.session && req.session.user) return next();
-  // remember where we came from
-  req.session.redirectTo = req.originalUrl;
-  res.redirect('/login');
-}
+// Equipment reservation
+app.post('/reserve-equipment', requireLogin, (req, res) => {
+  const { date, time_from, time_to, purpose, person_name } = req.body;
+  let equipment_name = req.body.equipment_name;
+  let equipment_qty = req.body.equipment_qty;
+  
+  // Handle single or multiple equipment items
+  if (!Array.isArray(equipment_name)) {
+    equipment_name = [equipment_name];
+    equipment_qty = [equipment_qty];
+  }
+  
+  // Format equipment list with quantities
+  const equipmentList = equipment_name.map((name, idx) => {
+    const qty = equipment_qty[idx] || 1;
+    return `${name} (x${qty})`;
+  }).join(', ');
+  
+  const nextId = db.get('lastId').value() + 1;
+  db.set('lastId', nextId).write();
+  db.get('reservations').push({
+    id: nextId,
+    venue: 'Equipment Reservation',
+    date,
+    time_from,
+    time_to,
+    purpose,
+    equipment: equipmentList,
+    person_name,
+    created_by: req.session.user.id,
+    status: 'pending',
+    created_at: new Date().toISOString()
+  }).write();
+  res.redirect('/equipment-reservations');
+});
 
+
+
+// Reservation details
 app.get('/reservation/:id', (req, res) => {
   const id = Number(req.params.id);
-  const row = db.get('reservations').find({ id }).value();
-  if (!row) return res.status(404).send('Not found');
-  res.render('reservation', { r: row });
+  const r = db.get('reservations').find({ id }).value();
+  if (!r) return res.status(404).send('Not found');
+  res.render('reservation', { r });
 });
 
-app.get('/admin/login', (req, res) => {
-  // Redirect to main login; admin users should sign in via /login and have role 'admin'
-  res.redirect('/login');
-});
-
-// Sign-up & Sign-in routes for users
+// User authentication
 app.get('/signup', (req, res) => {
-  if (req.session && req.session.user) return res.redirect('/');
+  if (req.session.user) return res.redirect('/');
   res.render('signup', { error: null });
 });
-
 app.post('/signup', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.render('signup', { error: 'Missing fields' });
@@ -139,51 +202,28 @@ app.post('/signup', (req, res) => {
   req.session.user = { id, username, role: 'user' };
   res.redirect('/');
 });
-
 app.get('/login', (req, res) => {
-  if (req.session && req.session.user) return res.redirect('/');
+  if (req.session.user) return res.redirect('/');
   res.render('login', { error: null });
 });
-
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   const u = db.get('users').find({ username }).value();
-  if (!u) return res.render('login', { error: 'Invalid credentials' });
-  if (!bcrypt.compareSync(password, u.password)) return res.render('login', { error: 'Invalid credentials' });
+  if (!u || !bcrypt.compareSync(password, u.password)) return res.render('login', { error: 'Invalid credentials' });
   req.session.user = { id: u.id, username: u.username, role: u.role };
   res.redirect('/');
 });
+app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/') ));
 
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/'));
-});
-
-// Deprecated: admin/login handled via standard /login route; this POST kept for backward compatibility
-app.post('/admin/login', (req, res) => {
-  res.redirect('/login');
-});
-
-app.get('/admin/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/'));
-});
-
-function requireAdmin(req, res, next) {
-  if (req.session && req.session.user && req.session.user.role === 'admin') return next();
-  res.redirect('/login');
-}
-
+// Admin routes
 app.get('/admin', requireAdmin, (req, res) => {
-  const rows = db.get('reservations').value().slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  const rows = db.get('reservations').value().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   res.render('admin', { reservations: rows });
 });
-
-// Admin: list users (passwords not shown) and allow reset
 app.get('/admin/users', requireAdmin, (req, res) => {
   const users = db.get('users').map(u => ({ id: u.id, username: u.username, role: u.role })).value();
   res.render('admin_users', { users });
 });
-
-// Admin: reset a user's password
 app.post('/admin/reset-password/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const { newpassword } = req.body;
@@ -192,37 +232,36 @@ app.post('/admin/reset-password/:id', requireAdmin, (req, res) => {
   db.get('users').find({ id }).assign({ password: hash }).write();
   res.redirect('/admin/users');
 });
-
 app.post('/admin/decision/:id', requireAdmin, (req, res) => {
   const { decision } = req.body;
   const id = Number(req.params.id);
   db.get('reservations').find({ id }).assign({ status: decision }).write();
   res.redirect('/admin');
 });
-
-// Cancel reservation (user) - only owner or admin can cancel
-app.post('/cancel/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const r = db.get('reservations').find({ id }).value();
-  if (!r) return res.status(404).send('Not found');
-  const user = req.session && req.session.user;
-  if (!user) return res.status(403).send('Not authorized');
-  if (user.role !== 'admin' && r.created_by !== user.id) return res.status(403).send('Not authorized');
-  db.get('reservations').find({ id }).assign({ status: 'cancelled' }).write();
-  res.redirect('back');
-});
-
-// Delete reservation (admin)
 app.post('/admin/delete/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   db.get('reservations').remove({ id }).write();
   res.redirect('/admin');
 });
 
+// Cancel reservation (user/admin)
+app.post('/cancel/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const r = db.get('reservations').find({ id }).value();
+  if (!r) return res.status(404).send('Not found');
+  const user = req.session.user;
+  if (!user || (user.role !== 'admin' && r.created_by !== user.id)) return res.status(403).send('Not authorized');
+  db.get('reservations').find({ id }).assign({ status: 'cancelled' }).write();
+  res.redirect('back');
+});
+
+// Calendar view
 app.get('/calendar', (req, res) => {
-  const rows = db.get('reservations').filter(r => r.status !== 'declined').map(r => ({ id: r.id, venue: r.venue, date: r.date, time_from: r.time_from, time_to: r.time_to, status: r.status })).value();
+  const rows = db.get('reservations').filter(r => r.status !== 'declined').map(r => ({
+    id: r.id, venue: r.venue, date: r.date, time_from: r.time_from, time_to: r.time_to, status: r.status
+  })).value();
   res.render('calendar', { events: rows });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Server running on http://localhost:' + PORT));
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

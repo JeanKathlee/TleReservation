@@ -1,0 +1,21 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+    <div class="ms-auto d-flex align-items-center">
+      <% if (user && user.role === 'admin') { %>
+        <a class="btn btn-outline-secondary btn-sm me-2" href="/calendar">Calendar</a>
+      <% } %>
+      <% if (user) { %>
+        <span class="me-2">Hello, <strong><%= user.username %></strong></span>
+        <a class="btn btn-outline-primary btn-sm me-2" href="/logout">Logout</a>
+        <% if (user.role === 'admin') { %>
+          <a class="btn btn-primary btn-sm" href="/admin">Admin</a>
+        <% } %>
+      <% } else { %>
+        <a class="btn btn-link btn-sm me-2" href="/login">Login</a>
+        <a class="btn btn-primary btn-sm me-2" href="/signup">Sign up</a>
+        <a class="btn btn-outline-dark btn-sm" href="/login">Admin sign in</a>
+      <% } %>
+    </div>
+  </div>
+</nav>

@@ -45,8 +45,14 @@
               </div>
 
               <div class="row mt-2">
-                <div class="col-md-6"><strong>Purpose of Activity</strong><div><%= r.purpose || 'N/A' %></div></div>
-                <div class="col-md-6"><strong>Tools/Equipment</strong><div><%= r.equipment || 'N/A' %></div></div>
+                <div class="col-md-6"><strong>Time:</strong> <div><%= r.time_from %> - <%= r.time_to %></div></div>
+                <% if (r.equipment) { %>
+                  <div class="col-md-6"><strong>Equipment:</strong> <div><%= r.equipment %></div></div>
+                <% } %>
+              </div>
+
+              <div class="row mt-2">
+                <div class="col-12"><strong>Purpose of Activity:</strong><div><%= r.purpose || 'N/A' %></div></div>
               </div>
 
               <div class="mt-3"><strong>Person making the reservation</strong>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Statistics - TLE Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <%- include('navbar') %>
+
+    <div class="d-flex">
+      <%- include('sidebar') %>
+      
+      <main class="flex-grow-1 p-4">
+        <h2 class="mb-4">My Statistics</h2>
+        
+        <% 
+          const totalLab = (mine || []).filter(r => r.venue !== 'Equipment Reservation').length;
+          const totalEquipment = (mine || []).filter(r => r.venue === 'Equipment Reservation').length;
+          const approved = (mine || []).filter(r => r.status === 'approved').length;
+          const pending = (mine || []).filter(r => r.status === 'pending').length;
+          const declined = (mine || []).filter(r => r.status === 'declined').length;
+          const cancelled = (mine || []).filter(r => r.status === 'cancelled').length;
+        %>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+              <div class="card-body">
+                <i class="bi bi-building text-primary" style="font-size: 2rem;"></i>
+                <h2 class="text-primary mt-2"><%= totalLab %></h2>
+                <p class="mb-0 text-muted">Lab Reservations</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+              <div class="card-body">
+                <i class="bi bi-tools text-info" style="font-size: 2rem;"></i>
+                <h2 class="text-info mt-2"><%= totalEquipment %></h2>
+                <p class="mb-0 text-muted">Equipment Reservations</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center shadow-sm">
+              <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h2 class="text-success mt-2"><%= approved %></h2>
+                <p class="mb-0 text-muted">Approved</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center shadow-sm">
+              <div class="card-body">
+                <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+                <h2 class="text-warning mt-2"><%= pending %></h2>
+                <p class="mb-0 text-muted">Pending</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center shadow-sm">
+              <div class="card-body">
+                <i class="bi bi-x-circle text-danger" style="font-size: 2rem;"></i>
+                <h2 class="text-danger mt-2"><%= declined %></h2>
+                <p class="mb-0 text-muted">Declined</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Summary</h5>
+            <p>You have made a total of <strong><%= (mine || []).length %></strong> reservations.</p>
+            <% if ((mine || []).length > 0) { %>
+              <div class="progress" style="height: 30px;">
+                <% if (approved > 0) { %>
+                  <div class="progress-bar bg-success" style="width: <%= (approved / (mine || []).length * 100) %>%" title="<%= approved %> Approved">
+                    <%= approved %> Approved
+                  </div>
+                <% } %>
+                <% if (pending > 0) { %>
+                  <div class="progress-bar bg-warning" style="width: <%= (pending / (mine || []).length * 100) %>%" title="<%= pending %> Pending">
+                    <%= pending %> Pending
+                  </div>
+                <% } %>
+                <% if (declined > 0) { %>
+                  <div class="progress-bar bg-danger" style="width: <%= (declined / (mine || []).length * 100) %>%" title="<%= declined %> Declined">
+                    <%= declined %> Declined
+                  </div>
+                <% } %>
+                <% if (cancelled > 0) { %>
+                  <div class="progress-bar bg-secondary" style="width: <%= (cancelled / (mine || []).length * 100) %>%" title="<%= cancelled %> Cancelled">
+                    <%= cancelled %> Cancelled
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title">Recent Activity</h5>
+                <% 
+                  const recent = (mine || []).sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+                  if (recent.length === 0) {
+                %>
+                  <p class="text-muted">No recent activity</p>
+                <% } else { %>
+                  <div class="list-group list-group-flush">
+                    <% recent.forEach(r => { %>
+                      <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between">
+                          <div>
+                            <strong><%= r.venue === 'Equipment Reservation' ? r.equipment : r.venue %></strong>
+                            <div class="small text-muted"><%= r.date %> at <%= r.time_from %></div>
+                          </div>
+                          <span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : r.status==='cancelled' ? 'secondary' : 'warning' %>">
+                            <%= r.status %>
+                          </span>
+                        </div>
+                      </div>
+                    <% }); %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                  <a href="/" class="btn btn-outline-primary">
+                    <i class="bi bi-building me-2"></i>Reserve Laboratory
+                  </a>
+                  <a href="/?tab=equipment" class="btn btn-outline-info">
+                    <i class="bi bi-tools me-2"></i>Reserve Equipment
+                  </a>
+                  <a href="/lab-reservations" class="btn btn-outline-secondary">
+                    <i class="bi bi-list-check me-2"></i>View Lab Reservations
+                  </a>
+                  <a href="/equipment-reservations" class="btn btn-outline-secondary">
+                    <i class="bi bi-list-check me-2"></i>View Equipment Reservations
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

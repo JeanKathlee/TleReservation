@@ -29,7 +29,7 @@
           <div class="table-responsive">
             <table class="table table-striped mb-0">
               <thead class="table-light">
-                <tr><th>ID</th><th>Venue</th><th>Date</th><th>Time</th><th>Person</th><th>Purpose</th><th>Status</th><th>Action</th></tr>
+                <tr><th>ID</th><th>Venue</th><th>Date</th><th>Time</th><th>Person</th><th>Equipment</th><th>Purpose</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody>
                 <% reservations.forEach(r => { %>
@@ -39,6 +39,7 @@
                     <td><%= r.date %></td>
                     <td><%= r.time_from %> - <%= r.time_to %></td>
                     <td><%= r.person_name %></td>
+                    <td><%= r.equipment || '-' %></td>
                     <td><%= r.purpose %></td>
                     <td><span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : 'secondary' %>"><%= r.status %></span></td>
                     <td>

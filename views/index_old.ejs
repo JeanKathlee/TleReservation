@@ -3,16 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Home - TLE Lab Reservation</title>
+    <title>TLE Lab Reservation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <% if (!user) { %>
-      <!-- Sign-in form for guests -->
-      <%- include('navbar') %>
-      <main class="container py-5">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+      <div class="container">
+        <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+        <div class="ms-auto d-flex align-items-center">
+          <% if (user && user.role === 'admin') { %>
+            <a class="btn btn-outline-secondary btn-sm me-2" href="/calendar">Calendar</a>
+          <% } %>
+          <% if (user) { %>
+            <span class="me-2">Hello, <strong><%= user.username %></strong></span>
+            <a class="btn btn-outline-primary btn-sm me-2" href="/logout">Logout</a>
+            <% if (user.role === 'admin') { %>
+              <a class="btn btn-primary btn-sm" href="/admin">Admin</a>
+            <% } %>
+          <% } else { %>
+            <a class="btn btn-link btn-sm me-2" href="/login">Login</a>
+            <a class="btn btn-primary btn-sm me-2" href="/signup">Sign up</a>
+            <a class="btn btn-outline-dark btn-sm" href="/login">Admin sign in</a>
+          <% } %>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-4">
+      <% if (!user) { %>
+        <!-- Sign-in form for guests -->
         <div class="row justify-content-center">
           <div class="col-md-6">
             <div class="card shadow-sm">
@@ -36,48 +56,46 @@
             </div>
           </div>
         </div>
-      </main>
-    <% } else if (user.role === 'admin') { %>
-      <!-- Admin view -->
-      <%- include('navbar') %>
-      <main class="container py-4">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <h3>Admin Dashboard</h3>
-            <p>Use the <a href="/admin">Admin page</a> to manage reservations and users.</p>
+      <% } else { %>
+        <% if (user.role === 'admin') { %>
+          <!-- Admin dashboard -->
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h3>Admin Dashboard</h3>
+              <p>Use the <a href="/admin">Admin page</a> to manage reservations and users.</p>
+            </div>
           </div>
-        </div>
-      </main>
-    <% } else { %>
-      <!-- Regular user view with sidebar -->
-      <%- include('navbar') %>
-      
-      <div class="d-flex">
-        <%- include('sidebar') %>
-        
-        <main class="flex-grow-1 p-4">
-          <h2 class="mb-4">Make a Reservation</h2>
-          
-          <!-- Tab navigation for reserve forms -->
-          <ul class="nav nav-tabs mb-3" id="reserveTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="lab-tab" data-bs-toggle="tab" data-bs-target="#labForm" type="button" role="tab">
-                <i class="bi bi-building me-2"></i>Reserve Laboratory
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="equipment-tab" data-bs-toggle="tab" data-bs-target="#equipmentForm" type="button" role="tab">
-                <i class="bi bi-tools me-2"></i>Reserve Equipment
-              </button>
-            </li>
-          </ul>
+        <% } else { %>
+          <!-- Main Tabs for regular users -->
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link <%= (activeTab === 'reservations' || activeTab === 'equipment-res' || activeTab === 'statistics') ? '' : 'active' %>" id="reserve-lab-tab" data-bs-toggle="tab" data-bs-target="#reserveLab" type="button" role="tab">
+                    <i class="bi bi-building"></i> Reserve Lab
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="reserve-equipment-tab" data-bs-toggle="tab" data-bs-target="#reserveEquipment" type="button" role="tab">
+                    <i class="bi bi-tools"></i> Reserve Equipment
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link <%= (activeTab === 'reservations' || activeTab === 'equipment-res') ? 'active' : '' %>" id="my-reservations-tab" data-bs-toggle="tab" data-bs-target="#myReservations" type="button" role="tab">
+                    <i class="bi bi-list-check"></i> My Reservations
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link <%= (activeTab === 'statistics') ? 'active' : '' %>" id="statistics-tab" data-bs-toggle="tab" data-bs-target="#statistics" type="button" role="tab">
+                    <i class="bi bi-bar-chart"></i> Statistics
+                  </button>
+                </li>
+              </ul>
 
-          <div class="tab-content">
-            <!-- Lab Reservation Form -->
-            <div class="tab-pane fade show active" id="labForm" role="tabpanel">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <h4 class="card-title">Reserve a Laboratory</h4>
+              <div class="tab-content p-3" id="mainTabsContent">
+                <!-- Reserve Lab Tab -->
+                <div class="tab-pane fade <%= (activeTab === 'reservations' || activeTab === 'equipment-res' || activeTab === 'statistics') ? '' : 'show active' %>" id="reserveLab" role="tabpanel">
+                  <h2 class="card-title">Reserve a Laboratory</h2>
                   <p class="text-muted">Fill in the details below to request a laboratory reservation.</p>
                   <form action="/reserve" method="post" class="row g-3">
                     <div class="col-md-6">
@@ -124,16 +142,12 @@
                     </div>
                   </form>
                 </div>
-              </div>
-            </div>
 
-            <!-- Equipment Reservation Form -->
-            <div class="tab-pane fade" id="equipmentForm" role="tabpanel">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <h4 class="card-title">Reserve Equipment</h4>
-                  <p class="text-muted">Fill in the details below to reserve equipment. You can add multiple items.</p>
-                  <form action="/reserve-equipment" method="post" class="row g-3" id="equipmentReservationForm">
+                <!-- Reserve Equipment Tab -->
+                <div class="tab-pane fade" id="reserveEquipment" role="tabpanel">
+                  <h3>Reserve Equipment</h3>
+                  <p>Fill in the details below to reserve equipment. You can add multiple items.</p>
+                  <form action="/reserve-equipment" method="post" class="row g-3" id="equipmentForm">
                     <div class="col-md-3">
                       <label class="form-label">Date</label>
                       <input type="date" name="date" class="form-control" required>
@@ -178,13 +192,13 @@
                       <button type="submit" class="btn btn-success">Submit Equipment Reservation</button>
                     </div>
                   </form>
-                </div>
+                    </div>
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    <% } %>
+        <% } %>
+      <% } %>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
