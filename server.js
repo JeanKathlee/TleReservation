@@ -73,7 +73,9 @@ app.get('/', (req, res) => {
       return (e.person_name || '').toLowerCase().trim() === uname;
     });
   }
-  res.render('index', { mine, currentPage: 'home' });
+  // For admin, pass all reservations for the dashboard
+  const reservations = req.session.user && req.session.user.role === 'admin' ? allEvents : [];
+  res.render('index', { mine, reservations, currentPage: 'home' });
 });
 
 // Lab reservations page

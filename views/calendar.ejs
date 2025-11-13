@@ -2,24 +2,315 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Calendar</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Calendar - TLE Lab Reservation</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .event { border:1px solid #ccc; padding:8px; margin:6px 0 }
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #dee2e6;
+      border: 1px solid #dee2e6;
+    }
+    .calendar-day-header {
+      background: #0d6efd;
+      color: white;
+      text-align: center;
+      padding: 8px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .calendar-day {
+      background: white;
+      min-height: 100px;
+      padding: 5px;
+      position: relative;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    .calendar-day.other-month {
+      background: #f8f9fa;
+      color: #adb5bd;
+    }
+    .calendar-day.today {
+      background: #fff3cd;
+    }
+    .calendar-day-number {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .calendar-event {
+      background: #0d6efd;
+      color: white;
+      font-size: 10px;
+      padding: 2px 4px;
+      margin: 1px 0;
+      border-radius: 3px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .calendar-event.approved {
+      background: #198754;
+    }
+    .calendar-event.declined {
+      background: #dc3545;
+    }
+    .calendar-event.cancelled {
+      background: #6c757d;
+    }
+    .calendar-event.equipment {
+      background: #fd7e14;
+    }
+    .calendar-event.equipment.approved {
+      background: #20c997;
+    }
+    .legend {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
   </style>
 </head>
 <body>
-  <h1>Reservations Calendar (List)</h1>
-  <p><a href="/">Home</a></p>
-  <% if (events.length===0) { %>
-    <p>No reservations yet.</p>
-  <% } %>
-  <% events.forEach(ev => { %>
-    <div class="event">
-      <strong><%= ev.date %></strong> — <%= ev.time_from %> to <%= ev.time_to %>
-      <div><em><%= ev.venue %></em> — <%= ev.status %></div>
-      <div><a href="/reservation/<%= ev.id %>">View</a></div>
+  <nav class="navbar navbar-light bg-white border-bottom">
+    <div class="container">
+      <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+      <div>
+        <% if (user) { %>
+          <% if (user.role === 'admin') { %>
+            <a class="btn btn-outline-secondary btn-sm" href="/admin/users">Users</a>
+          <% } %>
+          <a class="btn btn-secondary btn-sm ms-2" href="/logout">Logout</a>
+        <% } else { %>
+          <a class="btn btn-primary btn-sm" href="/">Login</a>
+        <% } %>
+      </div>
     </div>
-  <% }) %>
+  </nav>
+
+  <div class="container py-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="calendar-header">
+          <button class="btn btn-outline-primary btn-sm" id="prevMonth">
+            <i class="bi bi-chevron-left"></i> Previous
+          </button>
+          <h4 class="mb-0" id="currentMonth"></h4>
+          <button class="btn btn-outline-primary btn-sm" id="nextMonth">
+            Next <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+
+        <div class="calendar-grid" id="calendarGrid">
+          <div class="calendar-day-header">Sun</div>
+          <div class="calendar-day-header">Mon</div>
+          <div class="calendar-day-header">Tue</div>
+          <div class="calendar-day-header">Wed</div>
+          <div class="calendar-day-header">Thu</div>
+          <div class="calendar-day-header">Fri</div>
+          <div class="calendar-day-header">Sat</div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #198754;"></div>
+            <span>Lab - Approved</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #20c997;"></div>
+            <span>Equipment - Approved</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Detail Modal -->
+  <div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Reservation Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="eventModalBody">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <a href="#" id="viewReservationLink" class="btn btn-primary">View Full Details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const events = <%- JSON.stringify(events) %>;
+    let currentDate = new Date();
+    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      document.getElementById('currentMonth').textContent = 
+        new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const prevLastDay = new Date(year, month, 0);
+      
+      const firstDayIndex = firstDay.getDay();
+      const lastDayDate = lastDay.getDate();
+      const prevLastDayDate = prevLastDay.getDate();
+      
+      const grid = document.getElementById('calendarGrid');
+      // Keep headers, remove day cells
+      while (grid.children.length > 7) {
+        grid.removeChild(grid.lastChild);
+      }
+
+      const today = new Date();
+      const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+      const todayDate = today.getDate();
+
+      // Previous month days
+      for (let i = firstDayIndex - 1; i >= 0; i--) {
+        const day = prevLastDayDate - i;
+        const cell = createDayCell(day, true, false);
+        grid.appendChild(cell);
+      }
+
+      // Current month days
+      for (let day = 1; day <= lastDayDate; day++) {
+        const isToday = isCurrentMonth && day === todayDate;
+        const cell = createDayCell(day, false, isToday);
+        
+        // Add events for this day (only approved ones)
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayEvents = events.filter(e => e.date === dateStr && e.status === 'approved');
+        
+        dayEvents.forEach(event => {
+          const eventDiv = document.createElement('div');
+          const isEquipment = event.venue === 'Equipment Reservation';
+          eventDiv.className = 'calendar-event';
+          
+          if (isEquipment) {
+            eventDiv.classList.add('equipment');
+          }
+          if (event.status === 'approved') {
+            eventDiv.classList.add('approved');
+          } else if (event.status === 'declined') {
+            eventDiv.classList.add('declined');
+          } else if (event.status === 'cancelled') {
+            eventDiv.classList.add('cancelled');
+          }
+          
+          const displayText = isEquipment ? 
+            (event.equipment || 'Equipment').split(',')[0].trim() : 
+            event.venue;
+          eventDiv.textContent = `${event.time_from} ${displayText}`;
+          eventDiv.onclick = () => showEventDetails(event);
+          cell.appendChild(eventDiv);
+        });
+        
+        grid.appendChild(cell);
+      }
+
+      // Next month days to fill the grid
+      const totalCells = grid.children.length - 7; // Exclude headers
+      const remainingCells = 35 - totalCells; // 5 weeks = 35 days
+      for (let day = 1; day <= remainingCells; day++) {
+        const cell = createDayCell(day, true, false);
+        grid.appendChild(cell);
+      }
+    }
+
+    function createDayCell(day, isOtherMonth, isToday) {
+      const cell = document.createElement('div');
+      cell.className = 'calendar-day';
+      if (isOtherMonth) cell.classList.add('other-month');
+      if (isToday) cell.classList.add('today');
+      
+      const dayNumber = document.createElement('div');
+      dayNumber.className = 'calendar-day-number';
+      dayNumber.textContent = day;
+      cell.appendChild(dayNumber);
+      
+      return cell;
+    }
+
+    function showEventDetails(event) {
+      const isEquipment = event.venue === 'Equipment Reservation';
+      const statusBadge = event.status === 'approved' ? 'success' : 
+                         event.status === 'declined' ? 'danger' : 
+                         event.status === 'cancelled' ? 'secondary' : 'warning';
+      
+      document.getElementById('eventModalBody').innerHTML = `
+        <div class="mb-2">
+          <strong>Type:</strong> ${isEquipment ? '<i class="bi bi-tools"></i> Equipment' : '<i class="bi bi-building"></i> Laboratory'}
+        </div>
+        <div class="mb-2">
+          <strong>${isEquipment ? 'Equipment:' : 'Venue:'}</strong> ${isEquipment ? (event.equipment || '-') : event.venue}
+        </div>
+        <div class="mb-2">
+          <strong>Date:</strong> ${event.date}
+        </div>
+        <div class="mb-2">
+          <strong>Time:</strong> ${event.time_from} - ${event.time_to}
+        </div>
+        <div class="mb-2">
+          <strong>Person:</strong> ${event.person_name || '-'}
+        </div>
+        <div class="mb-2">
+          <strong>Purpose:</strong> ${event.purpose || '-'}
+        </div>
+        ${!isEquipment && event.equipment ? `<div class="mb-2"><strong>Equipment/Tools:</strong> ${event.equipment}</div>` : ''}
+        <div class="mb-2">
+          <strong>Status:</strong> <span class="badge bg-${statusBadge}">${event.status}</span>
+        </div>
+      `;
+      
+      const viewLink = document.getElementById('viewReservationLink');
+      viewLink.href = `/reservation/${event.id}`;
+      viewLink.target = '_blank';
+      modal.show();
+    }
+
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar();
+    });
+
+    renderCalendar();
+  </script>
 </body>
 </html>

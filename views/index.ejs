@@ -39,12 +39,161 @@
       </main>
     <% } else if (user.role === 'admin') { %>
       <!-- Admin view -->
-      <%- include('navbar') %>
+      <nav class="navbar navbar-light bg-white border-bottom">
+        <div class="container">
+          <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+          <div>
+            <a class="btn btn-outline-secondary btn-sm" href="/calendar">Calendar</a>
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="/admin/users">Users</a>
+            <a class="btn btn-secondary btn-sm ms-2" href="/logout">Logout</a>
+          </div>
+        </div>
+      </nav>
+
       <main class="container py-4">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <h3>Admin Dashboard</h3>
-            <p>Use the <a href="/admin">Admin page</a> to manage reservations and users.</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2>Manage Reservations</h2>
+        </div>
+
+        <!-- Tabs for Lab and Equipment Reservations -->
+        <ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="lab-admin-tab" data-bs-toggle="tab" data-bs-target="#labReservations" type="button" role="tab">
+              <i class="bi bi-building me-2"></i>Laboratory Reservations
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="equipment-admin-tab" data-bs-toggle="tab" data-bs-target="#equipmentReservations" type="button" role="tab">
+              <i class="bi bi-tools me-2"></i>Equipment Reservations
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Lab Reservations Tab -->
+          <div class="tab-pane fade show active" id="labReservations" role="tabpanel">
+            <div class="card shadow-sm">
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-striped mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 5%;">ID</th>
+                        <th style="width: 15%;">Venue</th>
+                        <th style="width: 10%;">Date</th>
+                        <th style="width: 12%;">Time</th>
+                        <th style="width: 12%;">Person</th>
+                        <th style="width: 12%;">Equipment</th>
+                        <th style="width: 15%;">Purpose</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 11%;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% 
+                      const labReservations = reservations.filter(r => r.venue !== 'Equipment Reservation');
+                      if (labReservations.length > 0) { %>
+                        <% labReservations.forEach(r => { %>
+                          <tr>
+                            <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
+                            <td><%= r.venue %></td>
+                            <td><%= r.date %></td>
+                            <td class="text-nowrap"><%= r.time_from %> - <%= r.time_to %></td>
+                            <td><%= r.person_name %></td>
+                            <td><%= r.equipment || '-' %></td>
+                            <td><%= r.purpose %></td>
+                            <td><span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : 'secondary' %>"><%= r.status %></span></td>
+                            <td class="text-nowrap">
+                              <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline me-1" onsubmit="return confirm('Are you sure you want to APPROVE this reservation?');">
+                                <button name="decision" value="approved" class="btn btn-sm btn-success" title="Approve">
+                                  <i class="bi bi-check-lg"></i>
+                                </button>
+                              </form>
+                              <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline me-1" onsubmit="return confirm('Are you sure you want to DECLINE this reservation?');">
+                                <button name="decision" value="declined" class="btn btn-sm btn-danger" title="Decline">
+                                  <i class="bi bi-x-lg"></i>
+                                </button>
+                              </form>
+                              <form method="post" action="/admin/delete/<%= r.id %>" class="d-inline" onsubmit="return confirm('Are you sure you want to DELETE reservation #<%= r.id %>? This action cannot be undone.');">
+                                <button class="btn btn-sm btn-outline-danger" title="Delete">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </form>
+                            </td>
+                          </tr>
+                        <% }) %>
+                      <% } else { %>
+                        <tr>
+                          <td colspan="9" class="text-center text-muted py-4">No lab reservations yet</td>
+                        </tr>
+                      <% } %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Equipment Reservations Tab -->
+          <div class="tab-pane fade" id="equipmentReservations" role="tabpanel">
+            <div class="card shadow-sm">
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-striped mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 5%;">ID</th>
+                        <th style="width: 20%;">Equipment</th>
+                        <th style="width: 10%;">Date</th>
+                        <th style="width: 12%;">Time</th>
+                        <th style="width: 12%;">Person</th>
+                        <th style="width: 20%;">Purpose</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 13%;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% 
+                      const equipmentReservations = reservations.filter(r => r.venue === 'Equipment Reservation');
+                      if (equipmentReservations.length > 0) { %>
+                        <% equipmentReservations.forEach(r => { %>
+                          <tr>
+                            <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
+                            <td><%= r.equipment || '-' %></td>
+                            <td><%= r.date %></td>
+                            <td class="text-nowrap"><%= r.time_from %> - <%= r.time_to %></td>
+                            <td><%= r.person_name %></td>
+                            <td><%= r.purpose %></td>
+                            <td><span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : 'secondary' %>"><%= r.status %></span></td>
+                            <td class="text-nowrap">
+                              <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline me-1" onsubmit="return confirm('Are you sure you want to APPROVE this reservation?');">
+                                <button name="decision" value="approved" class="btn btn-sm btn-success" title="Approve">
+                                  <i class="bi bi-check-lg"></i>
+                                </button>
+                              </form>
+                              <form method="post" action="/admin/decision/<%= r.id %>" class="d-inline me-1" onsubmit="return confirm('Are you sure you want to DECLINE this reservation?');">
+                                <button name="decision" value="declined" class="btn btn-sm btn-danger" title="Decline">
+                                  <i class="bi bi-x-lg"></i>
+                                </button>
+                              </form>
+                              <form method="post" action="/admin/delete/<%= r.id %>" class="d-inline" onsubmit="return confirm('Are you sure you want to DELETE reservation #<%= r.id %>? This action cannot be undone.');">
+                                <button class="btn btn-sm btn-outline-danger" title="Delete">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </form>
+                            </td>
+                          </tr>
+                        <% }) %>
+                      <% } else { %>
+                        <tr>
+                          <td colspan="8" class="text-center text-muted py-4">No equipment reservations yet</td>
+                        </tr>
+                      <% } %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
