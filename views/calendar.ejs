@@ -61,7 +61,7 @@
       white-space: nowrap;
     }
     .calendar-event.approved {
-      background: #198754;
+      background: #198754 !important;
     }
     .calendar-event.declined {
       background: #dc3545;
@@ -73,7 +73,11 @@
       background: #fd7e14;
     }
     .calendar-event.equipment.approved {
-      background: #20c997;
+      background: #20c997 !important;
+    }
+    .calendar-event.past {
+      opacity: 0.65;
+      border: 1px dashed rgba(0,0,0,0.08);
     }
     .legend {
       display: flex;
@@ -95,30 +99,45 @@
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-light bg-white border-bottom">
-    <div class="container">
-      <a class="navbar-brand" href="/">TLE Lab Reservation</a>
-      <div>
-        <% if (user) { %>
-          <% if (user.role === 'admin') { %>
-            <a class="btn btn-outline-secondary btn-sm" href="/admin/users">Users</a>
-          <% } %>
-          <a class="btn btn-secondary btn-sm ms-2" href="/logout">Logout</a>
-        <% } else { %>
-          <a class="btn btn-primary btn-sm" href="/">Login</a>
-        <% } %>
-      </div>
-    </div>
-  </nav>
+  <%- include('navbar') %>
+
+  <!-- Floating logout button for quick access anywhere on the page -->
+  <style>
+    .floating-logout {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 1050;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      border-radius: 6px;
+    }
+    .back-btn {
+      min-width: 90px;
+    }
+  </style>
+  <% if (user) { %>
+    <button type="button" class="btn btn-sm btn-outline-danger floating-logout" onclick="openLogoutModal('logout')">Logout</button>
+  <% } %>
 
   <div class="container py-4">
     <div class="card shadow-sm">
       <div class="card-body">
         <div class="calendar-header">
-          <button class="btn btn-outline-primary btn-sm" id="prevMonth">
-            <i class="bi bi-chevron-left"></i> Previous
-          </button>
+          <div>
+            <button class="btn btn-outline-secondary btn-sm back-btn me-2" id="backButton" onclick="history.back()">
+              <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <button class="btn btn-outline-primary btn-sm" id="prevMonth">
+              <i class="bi bi-chevron-left"></i> Previous
+            </button>
+          </div>
           <h4 class="mb-0" id="currentMonth"></h4>
+          <% if (user && user.role === 'admin' && typeof adminStats !== 'undefined') { %>
+            <div class="text-end small">
+              <div><strong>Previous (approved):</strong> <%= adminStats.past %></div>
+              <div><strong>Upcoming (approved):</strong> <%= adminStats.future %></div>
+            </div>
+          <% } %>
           <button class="btn btn-outline-primary btn-sm" id="nextMonth">
             Next <i class="bi bi-chevron-right"></i>
           </button>
@@ -168,7 +187,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const events = <%- JSON.stringify(events) %>;
+    const events = <%- JSON.stringify(events || []) %>;
+    // debug: print events to console to verify rendering
+    console.log('calendar events:', events);
     let currentDate = new Date();
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
 
@@ -211,23 +232,48 @@
         
         // Add events for this day (only approved ones)
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayEvents = events.filter(e => e.date === dateStr && e.status === 'approved');
+        const dayEvents = events.filter(e => {
+          // normalize event date to YYYY-MM-DD (handles ISO timestamps)
+          if (!e || !e.date) return false;
+          let evDate;
+          try {
+            if (typeof e.date === 'string') {
+              evDate = e.date.slice(0,10);
+            } else {
+              evDate = new Date(e.date).toISOString().slice(0,10);
+            }
+          } catch (err) {
+            evDate = '';
+          }
+          // accept if dates match; if status exists, prefer only approved
+          const statusOK = (typeof e.status === 'undefined') ? true : (e.status === 'approved');
+          return evDate === dateStr && statusOK;
+        });
         
         dayEvents.forEach(event => {
           const eventDiv = document.createElement('div');
           const isEquipment = event.venue === 'Equipment Reservation';
           eventDiv.className = 'calendar-event';
           
-          if (isEquipment) {
-            eventDiv.classList.add('equipment');
-          }
+          if (isEquipment) eventDiv.classList.add('equipment');
+          // inline color to ensure visibility (fallback for CSS issues)
           if (event.status === 'approved') {
             eventDiv.classList.add('approved');
+            if (isEquipment) eventDiv.style.backgroundColor = '#20c997'; else eventDiv.style.backgroundColor = '#198754';
           } else if (event.status === 'declined') {
             eventDiv.classList.add('declined');
+            eventDiv.style.backgroundColor = '#dc3545';
           } else if (event.status === 'cancelled') {
             eventDiv.classList.add('cancelled');
+            eventDiv.style.backgroundColor = '#6c757d';
+          } else {
+            // default
+            eventDiv.style.backgroundColor = isEquipment ? '#fd7e14' : '#0d6efd';
           }
+
+          // mark past approved events for visual context
+          const todayISO = new Date().toISOString().slice(0,10);
+          if ((event.date && String(event.date).slice(0,10)) < todayISO) eventDiv.classList.add('past');
           
           const displayText = isEquipment ? 
             (event.equipment || 'Equipment').split(',')[0].trim() : 

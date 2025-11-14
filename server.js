@@ -1,29 +1,15 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
-const low = require('lowdb');
-const FileSync = require('lowdb/adapters/FileSync');
+const knex = require('./db/knex');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
-const fs = require('fs');
+// const fs removed; not needed when using MySQL via Knex
 
 const app = express();
 
-// Ensure data directory exists and initialize JSON DB
-if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'));
-const adapter = new FileSync(path.join(__dirname, 'data', 'db.json'));
-const db = low(adapter);
-db.defaults({ users: [], reservations: [], lastId: 0 }).write();
-
-// Create admin user if not exists
-const ensureAdmin = () => {
-  const admin = db.get('users').find({ username: 'admin' }).value();
-  if (!admin) {
-    const hash = bcrypt.hashSync('adminpass', 8);
-    db.get('users').push({ id: 1, username: 'admin', password: hash, role: 'admin' }).write();
-  }
-};
-ensureAdmin();
+// Using Knex/MySQL for persistence. Ensure tables exist via migrations.
+// There is no local JSON DB initialization here; migration already created tables and data.
 
 // Express setup
 app.set('views', path.join(__dirname, 'views'));
@@ -39,11 +25,12 @@ app.use((req, res, next) => {
 });
 
 // Make reservations available to all templates
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   try {
-    const events = db.get('reservations').value();
-    res.locals.events = events;
+    const events = await knex('reservations').select('*');
+    res.locals.events = events || [];
   } catch (e) {
+    console.error('Failed to load reservations for templates:', e);
     res.locals.events = [];
   }
   next();
@@ -123,70 +110,91 @@ app.get('/statistics', requireLogin, (req, res) => {
 });
 
 // Lab reservation
-app.post('/reserve', requireLogin, (req, res) => {
-  const { venue, date, time_from, time_to, purpose, equipment, person_name } = req.body;
-  const nextId = db.get('lastId').value() + 1;
-  db.set('lastId', nextId).write();
-  db.get('reservations').push({
-    id: nextId,
-    venue,
-    date,
-    time_from,
-    time_to,
-    purpose,
-    equipment,
-    person_name,
-    created_by: req.session.user.id,
-    status: 'pending',
-    created_at: new Date().toISOString()
-  }).write();
-  res.redirect('/?tab=reservations');
+app.post('/reserve', requireLogin, async (req, res) => {
+  try {
+    const { venue, date, time_from, time_to, purpose, equipment, person_name } = req.body;
+    const insertRes = {
+      venue,
+      date,
+      time_from,
+      time_to,
+      purpose,
+      equipment,
+      person_name,
+      created_by: req.session.user.id,
+      status: 'pending',
+      created_at: new Date()
+    };
+    await knex('reservations').insert(insertRes);
+    res.redirect('/?tab=reservations');
+  } catch (err) {
+    console.error('Failed to create reservation:', err);
+    res.status(500).send('Failed to create reservation');
+  }
 });
 
 // Equipment reservation
-app.post('/reserve-equipment', requireLogin, (req, res) => {
-  const { date, time_from, time_to, purpose, person_name } = req.body;
-  let equipment_name = req.body.equipment_name;
-  let equipment_qty = req.body.equipment_qty;
-  
-  // Handle single or multiple equipment items
-  if (!Array.isArray(equipment_name)) {
-    equipment_name = [equipment_name];
-    equipment_qty = [equipment_qty];
+app.post('/reserve-equipment', requireLogin, async (req, res) => {
+  try {
+    const { date, time_from, time_to, purpose, person_name } = req.body;
+    let equipment_name = req.body.equipment_name;
+    let equipment_qty = req.body.equipment_qty;
+    if (!Array.isArray(equipment_name)) {
+      equipment_name = [equipment_name];
+      equipment_qty = [equipment_qty];
+    }
+
+    const equipmentList = equipment_name.map((name, idx) => {
+      const qty = equipment_qty[idx] || 1;
+      return `${name} (x${qty})`;
+    }).join(', ');
+
+    // Transaction: insert reservation, then items
+    await knex.transaction(async trx => {
+      const [resId] = await trx('reservations').insert({
+        venue: 'Equipment Reservation',
+        date,
+        time_from,
+        time_to,
+        purpose,
+        equipment: equipmentList,
+        person_name,
+        created_by: req.session.user.id,
+        status: 'pending',
+        created_at: new Date()
+      });
+
+      const items = [];
+      for (let i = 0; i < equipment_name.length; i++) {
+        const name = equipment_name[i];
+        const qty = Number(equipment_qty[i]) || 1;
+        items.push({ reservation_id: resId, name, quantity: qty });
+      }
+      if (items.length) await trx('reservation_items').insert(items);
+    });
+
+    res.redirect('/equipment-reservations');
+  } catch (err) {
+    console.error('Failed to create equipment reservation:', err);
+    res.status(500).send('Failed to create equipment reservation');
   }
-  
-  // Format equipment list with quantities
-  const equipmentList = equipment_name.map((name, idx) => {
-    const qty = equipment_qty[idx] || 1;
-    return `${name} (x${qty})`;
-  }).join(', ');
-  
-  const nextId = db.get('lastId').value() + 1;
-  db.set('lastId', nextId).write();
-  db.get('reservations').push({
-    id: nextId,
-    venue: 'Equipment Reservation',
-    date,
-    time_from,
-    time_to,
-    purpose,
-    equipment: equipmentList,
-    person_name,
-    created_by: req.session.user.id,
-    status: 'pending',
-    created_at: new Date().toISOString()
-  }).write();
-  res.redirect('/equipment-reservations');
 });
 
 
 
 // Reservation details
-app.get('/reservation/:id', (req, res) => {
+app.get('/reservation/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const r = db.get('reservations').find({ id }).value();
-  if (!r) return res.status(404).send('Not found');
-  res.render('reservation', { r });
+  try {
+    const r = await knex('reservations').where({ id }).first();
+    if (!r) return res.status(404).send('Not found');
+    const items = await knex('reservation_items').where({ reservation_id: id }).select('*');
+    r.items = items;
+    res.render('reservation', { r });
+  } catch (err) {
+    console.error('Failed to fetch reservation:', err);
+    res.status(500).send('Server error');
+  }
 });
 
 // User authentication
@@ -194,75 +202,136 @@ app.get('/signup', (req, res) => {
   if (req.session.user) return res.redirect('/');
   res.render('signup', { error: null });
 });
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.render('signup', { error: 'Missing fields' });
-  if (db.get('users').find({ username }).value()) return res.render('signup', { error: 'User exists' });
-  const id = db.get('users').size().value() + 1;
-  const hash = bcrypt.hashSync(password, 8);
-  db.get('users').push({ id, username, password: hash, role: 'user' }).write();
-  req.session.user = { id, username, role: 'user' };
-  res.redirect('/');
+  try {
+    const existing = await knex('users').where({ username }).first();
+    if (existing) return res.render('signup', { error: 'User exists' });
+    const hash = bcrypt.hashSync(password, 8);
+    const [id] = await knex('users').insert({ username, password: hash, role: 'user' });
+    req.session.user = { id, username, role: 'user' };
+    res.redirect('/');
+  } catch (err) {
+    console.error('Signup failed:', err);
+    res.status(500).send('Signup failed');
+  }
 });
 app.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/');
   res.render('login', { error: null });
 });
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const u = db.get('users').find({ username }).value();
-  if (!u || !bcrypt.compareSync(password, u.password)) return res.render('login', { error: 'Invalid credentials' });
-  req.session.user = { id: u.id, username: u.username, role: u.role };
-  res.redirect('/');
+  try {
+    const u = await knex('users').where({ username }).first();
+    if (!u || !bcrypt.compareSync(password, u.password)) return res.render('login', { error: 'Invalid credentials' });
+    req.session.user = { id: u.id, username: u.username, role: u.role };
+    res.redirect('/');
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).send('Login failed');
+  }
 });
 app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/') ));
 
 // Admin routes
-app.get('/admin', requireAdmin, (req, res) => {
-  const rows = db.get('reservations').value().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-  res.render('admin', { reservations: rows });
+app.get('/admin', requireAdmin, async (req, res) => {
+  try {
+    const rows = await knex('reservations').orderBy('created_at', 'desc').select('*');
+    res.render('admin', { reservations: rows });
+  } catch (err) {
+    console.error('Failed to load admin reservations', err);
+    res.status(500).send('Server error');
+  }
 });
-app.get('/admin/users', requireAdmin, (req, res) => {
-  const users = db.get('users').map(u => ({ id: u.id, username: u.username, role: u.role })).value();
-  res.render('admin_users', { users });
+
+app.get('/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await knex('users').select('id', 'username', 'role');
+    res.render('admin_users', { users });
+  } catch (err) {
+    console.error('Failed to load users', err);
+    res.status(500).send('Server error');
+  }
 });
-app.post('/admin/reset-password/:id', requireAdmin, (req, res) => {
+
+app.post('/admin/reset-password/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const { newpassword } = req.body;
   if (!newpassword || newpassword.length < 4) return res.status(400).send('Password too short');
-  const hash = bcrypt.hashSync(newpassword, 8);
-  db.get('users').find({ id }).assign({ password: hash }).write();
-  res.redirect('/admin/users');
+  try {
+    const hash = bcrypt.hashSync(newpassword, 8);
+    await knex('users').where({ id }).update({ password: hash });
+    res.redirect('/admin/users');
+  } catch (err) {
+    console.error('Failed to reset password', err);
+    res.status(500).send('Server error');
+  }
 });
-app.post('/admin/decision/:id', requireAdmin, (req, res) => {
+
+app.post('/admin/decision/:id', requireAdmin, async (req, res) => {
   const { decision } = req.body;
   const id = Number(req.params.id);
-  db.get('reservations').find({ id }).assign({ status: decision }).write();
-  res.redirect('/admin');
+  try {
+    await knex('reservations').where({ id }).update({ status: decision });
+    res.redirect('/admin');
+  } catch (err) {
+    console.error('Failed to update decision', err);
+    res.status(500).send('Server error');
+  }
 });
-app.post('/admin/delete/:id', requireAdmin, (req, res) => {
+
+app.post('/admin/delete/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  db.get('reservations').remove({ id }).write();
-  res.redirect('/admin');
+  try {
+    await knex.transaction(async trx => {
+      await trx('reservation_items').where({ reservation_id: id }).del();
+      await trx('reservations').where({ id }).del();
+    });
+    res.redirect('/admin');
+  } catch (err) {
+    console.error('Failed to delete reservation', err);
+    res.status(500).send('Server error');
+  }
 });
 
 // Cancel reservation (user/admin)
-app.post('/cancel/:id', (req, res) => {
+app.post('/cancel/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const r = db.get('reservations').find({ id }).value();
-  if (!r) return res.status(404).send('Not found');
-  const user = req.session.user;
-  if (!user || (user.role !== 'admin' && r.created_by !== user.id)) return res.status(403).send('Not authorized');
-  db.get('reservations').find({ id }).assign({ status: 'cancelled' }).write();
-  res.redirect('back');
+  try {
+    const r = await knex('reservations').where({ id }).first();
+    if (!r) return res.status(404).send('Not found');
+    const user = req.session.user;
+    if (!user || (user.role !== 'admin' && r.created_by !== user.id)) return res.status(403).send('Not authorized');
+    await knex('reservations').where({ id }).update({ status: 'cancelled' });
+    res.redirect('back');
+  } catch (err) {
+    console.error('Failed to cancel reservation', err);
+    res.status(500).send('Server error');
+  }
 });
 
 // Calendar view
-app.get('/calendar', (req, res) => {
-  const rows = db.get('reservations').filter(r => r.status !== 'declined').map(r => ({
-    id: r.id, venue: r.venue, date: r.date, time_from: r.time_from, time_to: r.time_to, status: r.status
-  })).value();
-  res.render('calendar', { events: rows });
+app.get('/calendar', async (req, res) => {
+  try {
+    // Only pull approved reservations for the calendar
+    const rows = await knex('reservations').where({ status: 'approved' }).select('id', 'venue', 'date', 'time_from', 'time_to', 'status').orderBy('date', 'asc');
+
+    // compute admin stats: previous (past) and upcoming (future)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let past = 0;
+    let future = 0;
+    for (const r of rows) {
+      if ((r.date || '') < todayStr) past++; else future++;
+    }
+
+    const adminStats = { past, future };
+    res.render('calendar', { events: rows, adminStats });
+  } catch (err) {
+    console.error('Failed to load calendar events', err);
+    res.status(500).send('Server error');
+  }
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1,15 +1,20 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand" href="/">TLE Lab Reservation</a>
+    <a class="navbar-brand d-flex align-items-center" href="/">
+      <span class="me-2" style="font-weight:700; color:#0d6efd;">TLE</span>
+      <span style="font-size:0.9rem; color:#343a40;">Lab Reservation</span>
+    </a>
     <div class="ms-auto d-flex align-items-center">
-      <% if (user && user.role === 'admin') { %>
+      <% if (user) { %>
         <a class="btn btn-outline-secondary btn-sm me-2" href="/calendar">Calendar</a>
       <% } %>
       <% if (user) { %>
-        <span class="me-2">Hello, <strong><%= user.username %></strong></span>
-        <a class="btn btn-outline-primary btn-sm me-2" href="/logout">Logout</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm me-2 d-flex align-items-center" id="profileBtn" onclick="openProfileModal()">
+          <i class="bi bi-person-circle fs-5 me-1"></i>
+          <span class="d-none d-sm-inline"><%= user.username %></span>
+        </button>
         <% if (user.role === 'admin') { %>
-          <a class="btn btn-primary btn-sm" href="/admin">Admin</a>
+          <a class="btn btn-outline-primary btn-sm" href="/admin">Admin</a>
         <% } %>
       <% } else { %>
         <a class="btn btn-link btn-sm me-2" href="/login">Login</a>
@@ -19,3 +24,91 @@
     </div>
   </div>
 </nav>
+<!-- Logout / Switch Account Confirmation Modal -->
+<div class="modal fade" id="confirmLogoutModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmLogoutBody">
+        Are you sure you want to logout?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmLogoutBtn" class="btn btn-danger btn-sm">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+      <!-- Profile Action Modal: choose Switch Account or Logout -->
+      <div class="modal fade" id="profileActionModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Profile</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              Signed in as <strong><%= user ? user.username : '' %></strong>.<br>
+              What would you like to do?
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-warning btn-sm" onclick="(function(){ var m = bootstrap.Modal.getOrCreateInstance(document.getElementById('profileActionModal')); m.hide(); openLogoutModal('switch'); })()">Switch Account</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="(function(){ var m = bootstrap.Modal.getOrCreateInstance(document.getElementById('profileActionModal')); m.hide(); openLogoutModal('logout'); })()">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+<script>
+  let _logoutAction = 'logout';
+  function openLogoutModal(action) {
+    _logoutAction = action || 'logout';
+    const body = document.getElementById('confirmLogoutBody');
+    const btn = document.getElementById('confirmLogoutBtn');
+    if (_logoutAction === 'switch') {
+      body.textContent = 'Switching accounts will log you out. Continue to login page?';
+      btn.textContent = 'Switch';
+      btn.classList.remove('btn-danger');
+      btn.classList.add('btn-warning');
+    } else {
+      body.textContent = 'Are you sure you want to logout?';
+      btn.textContent = 'Logout';
+      btn.classList.remove('btn-warning');
+      btn.classList.add('btn-danger');
+    }
+    const modalEl = document.getElementById('confirmLogoutModal');
+    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal)
+      ? bootstrap.Modal.getOrCreateInstance(modalEl)
+      : null;
+    if (modal) modal.show();
+  }
+
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'confirmLogoutBtn') {
+      if (_logoutAction === 'switch') {
+        fetch('/logout', { method: 'GET', credentials: 'same-origin' })
+          .finally(() => { window.location = '/login'; });
+      } else {
+        window.location = '/logout';
+      }
+    }
+  });
+
+  function openProfileModal() {
+    const modalEl = document.getElementById('profileActionModal');
+    if (!modalEl) return;
+    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal)
+      ? bootstrap.Modal.getOrCreateInstance(modalEl)
+      : null;
+    if (modal) modal.show();
+  }
+</script>
+<style>
+  /* push page content down so fixed navbar doesn't overlap */
+  body { padding-top: 64px; }
+</style>
