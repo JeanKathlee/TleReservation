@@ -101,32 +101,21 @@
 <body>
   <%- include('navbar') %>
 
-  <!-- Floating logout button for quick access anywhere on the page -->
   <style>
-    .floating-logout {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 1050;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-      border-radius: 6px;
-    }
     .back-btn {
       min-width: 90px;
     }
   </style>
-  <% if (user) { %>
-    <button type="button" class="btn btn-sm btn-outline-danger floating-logout" onclick="openLogoutModal('logout')">Logout</button>
-  <% } %>
 
-  <div class="container py-4">
-    <div class="card shadow-sm">
-      <div class="card-body">
+  <div class="d-flex">
+    <%- include('sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <div class="container py-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
         <div class="calendar-header">
           <div>
-            <button class="btn btn-outline-secondary btn-sm back-btn me-2" id="backButton" onclick="history.back()">
-              <i class="bi bi-arrow-left"></i> Back
-            </button>
             <button class="btn btn-outline-primary btn-sm" id="prevMonth">
               <i class="bi bi-chevron-left"></i> Previous
             </button>
@@ -162,9 +151,10 @@
             <div class="legend-color" style="background: #20c997;"></div>
             <span>Equipment - Approved</span>
           </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 
   <!-- Event Detail Modal -->
@@ -315,30 +305,16 @@
                          event.status === 'declined' ? 'danger' : 
                          event.status === 'cancelled' ? 'secondary' : 'warning';
       
-      document.getElementById('eventModalBody').innerHTML = `
-        <div class="mb-2">
-          <strong>Type:</strong> ${isEquipment ? '<i class="bi bi-tools"></i> Equipment' : '<i class="bi bi-building"></i> Laboratory'}
-        </div>
-        <div class="mb-2">
-          <strong>${isEquipment ? 'Equipment:' : 'Venue:'}</strong> ${isEquipment ? (event.equipment || '-') : event.venue}
-        </div>
-        <div class="mb-2">
-          <strong>Date:</strong> ${event.date}
-        </div>
-        <div class="mb-2">
-          <strong>Time:</strong> ${event.time_from} - ${event.time_to}
-        </div>
-        <div class="mb-2">
-          <strong>Person:</strong> ${event.person_name || '-'}
-        </div>
-        <div class="mb-2">
-          <strong>Purpose:</strong> ${event.purpose || '-'}
-        </div>
-        ${!isEquipment && event.equipment ? `<div class="mb-2"><strong>Equipment/Tools:</strong> ${event.equipment}</div>` : ''}
-        <div class="mb-2">
-          <strong>Status:</strong> <span class="badge bg-${statusBadge}">${event.status}</span>
-        </div>
-      `;
+      var html = '';
+      html += '<div class="mb-2"><strong>Type:</strong> ' + (isEquipment ? '<i class="bi bi-tools"></i> Equipment' : '<i class="bi bi-building"></i> Laboratory') + '</div>';
+      html += '<div class="mb-2"><strong>' + (isEquipment ? 'Equipment:' : 'Venue:') + '</strong> ' + (isEquipment ? (event.equipment || '-') : event.venue) + '</div>';
+      html += '<div class="mb-2"><strong>Date:</strong> ' + event.date + '</div>';
+      html += '<div class="mb-2"><strong>Time:</strong> ' + event.time_from + ' - ' + event.time_to + '</div>';
+      html += '<div class="mb-2"><strong>Person:</strong> ' + (event.person_name || '-') + '</div>';
+      html += '<div class="mb-2"><strong>Purpose:</strong> ' + (event.purpose || '-') + '</div>';
+      if (!isEquipment && event.equipment) html += '<div class="mb-2"><strong>Equipment/Tools:</strong> ' + event.equipment + '</div>';
+      html += '<div class="mb-2"><strong>Status:</strong> <span class="badge bg-' + statusBadge + '">' + event.status + '</span></div>';
+      document.getElementById('eventModalBody').innerHTML = html;
       
       const viewLink = document.getElementById('viewReservationLink');
       viewLink.href = `/reservation/${event.id}`;

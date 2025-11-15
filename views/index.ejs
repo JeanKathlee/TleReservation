@@ -38,16 +38,19 @@
         </div>
       </main>
     <% } else if (user.role === 'admin') { %>
-      <!-- Admin view uses shared navbar (includes Switch/Logout) -->
+      <!-- Admin view uses shared navbar and left sidebar -->
       <%- include('navbar') %>
 
-      <main class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h2>Manage Reservations</h2>
-        </div>
+      <div class="d-flex">
+        <%- include('sidebar') %>
 
-        <!-- Tabs for Lab and Equipment Reservations -->
-        <ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
+        <main class="flex-grow-1 p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Manage Reservations</h2>
+          </div>
+
+          <!-- Tabs for Lab and Equipment Reservations -->
+          <ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link active" id="lab-admin-tab" data-bs-toggle="tab" data-bs-target="#labReservations" type="button" role="tab">
               <i class="bi bi-building me-2"></i>Laboratory Reservations
@@ -88,8 +91,8 @@
                           <tr>
                             <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
                             <td><%= r.venue %></td>
-                            <td><%= r.date %></td>
-                            <td class="text-nowrap"><%= r.time_from %> - <%= r.time_to %></td>
+                            <td><%= formatDate(r.date) %></td>
+                            <td class="text-nowrap"><%= formatTimeRange(r.time_from, r.time_to) %></td>
                             <td><%= r.person_name %></td>
                             <td><%= r.equipment || '-' %></td>
                             <td><%= r.purpose %></td>
@@ -151,8 +154,8 @@
                           <tr>
                             <td><a href="/reservation/<%= r.id %>"><%= r.id %></a></td>
                             <td><%= r.equipment || '-' %></td>
-                            <td><%= r.date %></td>
-                            <td class="text-nowrap"><%= r.time_from %> - <%= r.time_to %></td>
+                            <td><%= formatDate(r.date) %></td>
+                            <td class="text-nowrap"><%= formatTimeRange(r.time_from, r.time_to) %></td>
                             <td><%= r.person_name %></td>
                             <td><%= r.purpose %></td>
                             <td><span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : 'secondary' %>"><%= r.status %></span></td>
@@ -186,8 +189,9 @@
               </div>
             </div>
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     <% } else { %>
       <!-- Regular user view with sidebar -->
       <%- include('navbar') %>
@@ -219,7 +223,7 @@
                 <div class="card-body">
                   <h4 class="card-title">Reserve a Laboratory</h4>
                   <p class="text-muted">Fill in the details below to request a laboratory reservation.</p>
-                  <form action="/reserve" method="post" class="row g-3">
+                  <form action="/reserve" method="post" class="row g-3" id="labReservationForm">
                     <div class="col-md-6">
                       <label class="form-label">Venue</label>
                       <select name="venue" class="form-select" required>
@@ -366,6 +370,16 @@
           }
         });
       }
+      // Confirmation before submitting reservation forms
+      document.getElementById('labReservationForm')?.addEventListener('submit', function(e) {
+        const ok = confirm('Are you sure you want to submit this reservation?');
+        if (!ok) e.preventDefault();
+      });
+
+      document.getElementById('equipmentReservationForm')?.addEventListener('submit', function(e) {
+        const ok = confirm('Are you sure you want to submit this equipment reservation?');
+        if (!ok) e.preventDefault();
+      });
     </script>
   </body>
 </html>

@@ -45,7 +45,7 @@
                       <tr>
                         <td><strong><%= ev.equipment %></strong></td>
                         <td><%= ev.date %></td>
-                        <td><%= ev.time_from %> - <%= ev.time_to %></td>
+                        <td><%= formatTimeRange(ev.time_from, ev.time_to) %></td>
                         <td><%= ev.purpose || '-' %></td>
                         <td>
                           <span class="badge bg-<%= ev.status==='approved' ? 'success' : ev.status==='declined' ? 'danger' : ev.status==='cancelled' ? 'secondary' : 'warning' %>">

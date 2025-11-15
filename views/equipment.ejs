@@ -1,25 +1,24 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>Calendar</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .event { border:1px solid #ccc; padding:8px; margin:6px 0 }
-  </style>
-</head>
-<body>
-  <h1>Reservations Calendar (List)</h1>
-  <p><a href="/">Home</a></p>
-  <% if (events.length===0) { %>
-    <p>No reservations yet.</p>
-  <% } %>
-  <% events.forEach(ev => { %>
-    <div class="event">
-      <strong><%= ev.date %></strong> — <%= ev.time_from %> to <%= ev.time_to %>
-      <div><em><%= ev.venue %></em> — <%= ev.status %></div>
-      <div><a href="/reservation/<%= ev.id %>">View</a></div>
-    </div>
-  <% }) %>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title><%= title %></title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    >
+  </head>
+  <body>
+    <%- include('navbar') %>
+
+    <main class="container py-4">
+      <h3 class="mb-4">Equipment Reservation</h3>
+      <p>This page will allow users to view and manage equipment reservations.</p>
+
+      <a href="/" class="btn btn-secondary mt-3">Back to Home</a>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>

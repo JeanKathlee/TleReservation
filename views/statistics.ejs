@@ -122,7 +122,7 @@
                         <div class="d-flex justify-content-between">
                           <div>
                             <strong><%= r.venue === 'Equipment Reservation' ? r.equipment : r.venue %></strong>
-                            <div class="small text-muted"><%= r.date %> at <%= r.time_from %></div>
+                            <div class="small text-muted"><%= formatDate(r.date) %> at <%= formatTime(r.time_from) %></div>
                           </div>
                           <span class="badge bg-<%= r.status==='approved' ? 'success' : r.status==='declined' ? 'danger' : r.status==='cancelled' ? 'secondary' : 'warning' %>">
                             <%= r.status %>
